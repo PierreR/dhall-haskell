@@ -1274,10 +1274,18 @@ prettyPrinters characterSet =
                                 | otherwise = Just src
         stripComment Nothing = Nothing
 
+        -- Strip a single trailing newline character. Needed to ensure idempotency in
+        -- cases where we add hard line breaks.
+        stripTrailingNewline t =
+            case Text.unsnoc t' of
+                Just (t'', '\n') -> stripSpaces t''
+                _ -> t'
+          where t' = stripSpaces t
+
         keyWithComment = Pretty.align $ mconcat
             [ case stripComment mSrc0 of
                 Nothing -> mempty
-                Just _ -> renderSrc stripSpaces mSrc0 <> Pretty.hardline
+                Just _ -> renderSrc stripTrailingNewline mSrc0 <> Pretty.hardline
             , prettyKey key
             , " "
             , case stripComment mSrc1 of
@@ -1300,7 +1308,7 @@ prettyPrinters characterSet =
             <>  " "
             <>  case stripComment mSrc2 of
                     Nothing -> mempty
-                    Just _  -> renderSrc stripSpaces mSrc2 <> Pretty.hardline
+                    Just _  -> renderSrc stripTrailingNewline mSrc2 <> Pretty.hardline
             <>  prettyValue val
 
         long = keyWithComment
@@ -1309,7 +1317,7 @@ prettyPrinters characterSet =
                     Some val' ->
                             case stripComment mSrc2 of
                                 Nothing -> " "
-                                Just _ -> Pretty.hardline <> renderSrc stripSpaces mSrc2 <> Pretty.hardline
+                                Just _ -> Pretty.hardline <> renderSrc stripTrailingNewline mSrc2 <> Pretty.hardline
                         <>  builtin "Some"
                         <>  case shallowDenote val' of
                                 RecordCompletion _T r ->
@@ -1355,7 +1363,7 @@ prettyPrinters characterSet =
 
                     _ ->    case stripComment mSrc2 of
                                 Nothing -> mempty
-                                Just _ -> Pretty.hardline <> "    " <> renderSrc stripSpaces mSrc2
+                                Just _ -> Pretty.hardline <> "    " <> renderSrc stripTrailingNewline mSrc2
                         <>  Pretty.hardline
                         <>  "    "
                         <>  prettyValue val

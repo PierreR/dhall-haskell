@@ -205,6 +205,24 @@ renderSrc _ _ =
 stripSpaces :: Text -> Text
 stripSpaces = Text.dropAround (\c -> c == ' ' || c == '\t')
 
+-- Strip a single newline character. Needed to ensure idempotency in
+-- cases where we add hard line breaks.
+stripNewline :: Text -> Text
+stripNewline t =
+    case Text.uncons t' of
+        Just ('\n', t'') -> stripSpaces t''
+        _ -> t'
+  where t' = stripSpaces t
+
+-- Strip a single trailing newline character. Needed to ensure idempotency in
+-- cases where we add hard line breaks.
+stripTrailingNewline :: Text -> Text
+stripTrailingNewline t =
+    case Text.unsnoc t' of
+        Just (t'', '\n') -> stripSpaces t''
+        _ -> t'
+  where t' = stripSpaces t
+
 -- Annotation helpers
 keyword, syntax, label, literal, builtin, operator :: Doc Ann -> Doc Ann
 keyword  = Pretty.annotate Keyword
@@ -648,14 +666,6 @@ prettyPrinters characterSet =
             (fmap (duplicate . docA) (toList as) ++ [ docB ])
       where
         MultiLet as b = multiLet a0 b0
-
-        -- Strip a single newline character. Needed to ensure idempotency in
-        -- cases where we add hard line breaks.
-        stripNewline t =
-            case Text.uncons t' of
-                Just ('\n', t'') -> stripSpaces t''
-                _ -> t'
-          where t' = stripSpaces t
 
         docA (Binding src0 c src1 Nothing src2 e) =
             Pretty.group (Pretty.flatAlt long short)
@@ -1274,14 +1284,6 @@ prettyPrinters characterSet =
                                 | otherwise = Just src
         stripComment Nothing = Nothing
 
-        -- Strip a single trailing newline character. Needed to ensure idempotency in
-        -- cases where we add hard line breaks.
-        stripTrailingNewline t =
-            case Text.unsnoc t' of
-                Just (t'', '\n') -> stripSpaces t''
-                _ -> t'
-          where t' = stripSpaces t
-
         keyWithComment = Pretty.align $ mconcat
             [ case stripComment mSrc0 of
                 Nothing -> mempty
@@ -1317,7 +1319,7 @@ prettyPrinters characterSet =
                     Some val' ->
                             case stripComment mSrc2 of
                                 Nothing -> " "
-                                Just _ -> Pretty.hardline <> renderSrc stripTrailingNewline mSrc2 <> Pretty.hardline
+                                Just _ -> Pretty.hardline <> renderSrc (stripNewline . stripTrailingNewline) mSrc2 <> Pretty.hardline
                         <>  builtin "Some"
                         <>  case shallowDenote val' of
                                 RecordCompletion _T r ->
@@ -1363,7 +1365,7 @@ prettyPrinters characterSet =
 
                     _ ->    case stripComment mSrc2 of
                                 Nothing -> mempty
-                                Just _ -> Pretty.hardline <> "    " <> renderSrc stripTrailingNewline mSrc2
+                                Just _ -> Pretty.hardline <> "    " <> renderSrc (stripNewline . stripTrailingNewline) mSrc2
                         <>  Pretty.hardline
                         <>  "    "
                         <>  prettyValue val

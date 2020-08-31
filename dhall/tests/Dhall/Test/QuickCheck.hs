@@ -468,7 +468,9 @@ instance Arbitrary Src where
         lift2 Src <*> whitespace
 
     shrink (Src start end text) =
-        Src <$> shrink start <*> shrink end <*> shrinkWhitespace text
+            (Src <$> shrink start <*> pure end   <*> pure text)
+        ++  (Src <$> pure start   <*> shrink end <*> pure text)
+        ++  (Src <$> pure start   <*> pure end   <*> shrinkWhitespace text)
 
 instance Arbitrary SourcePos where
     arbitrary = lift3 SourcePos

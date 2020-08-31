@@ -1267,15 +1267,23 @@ prettyPrinters characterSet =
         -> Doc Ann
         -> (k, RecordField Src a)
         -> (Doc Ann, Doc Ann)
-    prettyKeyValue prettyKey prettyValue separator (key, RecordField mSrc0 val _mSrc1 _mSrc2) =
+    prettyKeyValue prettyKey prettyValue separator (key, RecordField mSrc0 val mSrc1 mSrc2) =
        duplicate (Pretty.group (Pretty.flatAlt long short))
       where
-        keyWithComment = case mSrc0 of
-            Nothing -> prettyKey key
-            Just src ->
-                if Text.all isWhitespace (srcText src)
-                    then prettyKey key
-                    else Pretty.align (renderSrc stripSpaces mSrc0 <> Pretty.hardline <> prettyKey key)
+        stripComment (Just src) | Text.all isWhitespace (srcText src) = Nothing
+                                | otherwise = Just src
+        stripComment Nothing = Nothing
+
+        keyWithComment = Pretty.align $ mconcat
+            [ case stripComment mSrc0 of
+                Nothing -> mempty
+                Just _ -> renderSrc stripSpaces mSrc0 <> Pretty.hardline
+            , prettyKey key
+            , " "
+            , case stripComment mSrc1 of
+                Nothing -> mempty
+                Just _ -> renderSrc stripSpaces mSrc1
+            ]
 
         completion _T r =
                 " "
@@ -1288,17 +1296,21 @@ prettyPrinters characterSet =
                         prettySelectorExpression r
 
         short = keyWithComment
-            <>  " "
             <>  separator
             <>  " "
+            <>  case stripComment mSrc2 of
+                    Nothing -> mempty
+                    Just _  -> renderSrc stripSpaces mSrc2 <> Pretty.hardline
             <>  prettyValue val
 
         long = keyWithComment
-            <>  " "
             <>  separator
             <>  case shallowDenote val of
                     Some val' ->
-                            " " <> builtin "Some"
+                            case stripComment mSrc2 of
+                                Nothing -> " "
+                                Just _ -> Pretty.hardline <> renderSrc stripSpaces mSrc2 <> Pretty.hardline
+                        <>  builtin "Some"
                         <>  case shallowDenote val' of
                                 RecordCompletion _T r ->
                                     completion _T r
@@ -1341,8 +1353,10 @@ prettyPrinters characterSet =
                             <>  "  "
                             <>  prettyValue val
 
-                    _ -> 
-                            Pretty.hardline
+                    _ ->    case stripComment mSrc2 of
+                                Nothing -> mempty
+                                Just _ -> Pretty.hardline <> "    " <> renderSrc stripSpaces mSrc2
+                        <>  Pretty.hardline
                         <>  "    "
                         <>  prettyValue val
 

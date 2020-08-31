@@ -279,8 +279,16 @@ instance (Arbitrary s, Arbitrary a) => Arbitrary (PreferAnnotation s a) where
             ]
 
 instance (Arbitrary s, Arbitrary a) => Arbitrary (RecordField s a) where
-    arbitrary =
-        lift1 Dhall.Core.makeRecordField
+    arbitrary = do
+        recordFieldSrc0 <- arbitrary
+
+        recordFieldValue <- arbitrary
+
+        recordFieldSrc1 <- arbitrary
+
+        recordFieldSrc2 <- arbitrary
+
+        return RecordField{..}
 
     shrink = genericShrink
 
@@ -459,7 +467,8 @@ instance Arbitrary Src where
     arbitrary = do
         lift2 Src <*> whitespace
 
-    shrink _ = []
+    shrink (Src start end text) =
+        Src <$> shrink start <*> shrink end <*> shrinkWhitespace text
 
 instance Arbitrary SourcePos where
     arbitrary = lift3 SourcePos

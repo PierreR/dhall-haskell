@@ -66,7 +66,6 @@ module Dhall.Pretty.Internal (
     ) where
 
 import Data.Foldable
-import Data.List.NonEmpty        (NonEmpty (..))
 import Data.Text                 (Text)
 import Data.Text.Prettyprint.Doc (Doc, Pretty, space)
 import Dhall.Map                 (Map)
@@ -78,7 +77,6 @@ import Numeric.Natural           (Natural)
 import qualified Data.Char
 import qualified Data.HashSet
 import qualified Data.List
-import qualified Data.List.NonEmpty                        as NonEmpty
 import qualified Data.Set
 import qualified Data.Text                                 as Text
 import qualified Data.Text.Prettyprint.Doc                 as Pretty
@@ -1390,14 +1388,16 @@ prettyPrinters characterSet =
       where
         consolidated = consolidateRecordLiteral a
 
-        prettyRecordEntry (keys, recordField) =
+        prettyRecordEntry (RecordEntry keys key recordField) =
             case keys of
-                key :| []
+                []
                     | Var (V key' 0) <- Dhall.Syntax.shallowDenote (recordFieldValue recordField)
                     , key == key' ->
-                        duplicate (prettyAnyLabel key)
+                        duplicate (prettyAnyLabel key) -- TODO: include mSrc0 and mSrc1
                 _ ->
-                    prettyKeyValue prettyAnyLabels prettyExpression equals (keys, recordField)
+                    prettyKeyValue prettyAnyLabels prettyExpression equals (map snd3 keys ++ [key], recordField)
+
+        snd3 (_, x, _) = x
 
     prettyAlternative (key, Just val) =
         prettyKeyValue prettyAnyLabel prettyExpression colon (key, makeRecordField val)
@@ -1577,19 +1577,23 @@ data RecordEntry s a = RecordEntry
 -}
 consolidateRecordLiteral
     :: Map Text (RecordField Src a) -> [RecordEntry Src a]
-consolidateRecordLiteral = fmap adapt . pairToRecordEntry . Map.toList
+consolidateRecordLiteral = map adapt . Map.toList
   where
-    adapt :: (Text, RecordField s a) -> (NonEmpty Text, RecordField s a)
-    adapt (key, rf) =
-        case shallowDenote (recordFieldValue rf) of
-            RecordLit m ->
-                case fmap adapt (Map.toList m) of
-                    [ (keys, rf') ] ->
-                        (NonEmpty.cons key keys, rf')
-                    _ ->
-                        (pure key, makeRecordField (RecordLit m))
+    adapt :: (Text, RecordField Src a) -> RecordEntry Src a
+    adapt (key, rf@(RecordField mSrc0 val mSrc1 mSrc2)) =
+        case mSrc2 of
+            Just src2 | not (Text.all isWhitespace (srcText src2)) ->
+                RecordEntry [] key rf
             _ ->
-                (pure key, rf)
+                case shallowDenote val of
+                    RecordLit m ->
+                        case map adapt (Map.toList m) of
+                            [ RecordEntry keys key' rf' ] ->
+                                RecordEntry ((mSrc0, key, mSrc1) : keys) key' rf'
+                            _ ->
+                                RecordEntry [] key rf
+                    _ ->
+                        RecordEntry [] key rf
 
 -- | Escape a `Text` literal using Dhall's escaping rules for single-quoted
 --   @Text@

@@ -1386,7 +1386,7 @@ prettyPrinters characterSet =
         | Data.Foldable.null a =
             lbrace <> equals <> rbrace
         | otherwise =
-            braceStyle (map prettyRecordEntry (Map.toList consolidated))
+            braceStyle (map prettyRecordEntry consolidated)
       where
         consolidated = consolidateRecordLiteral a
 
@@ -1566,12 +1566,18 @@ escapeTrailingSingleQuote chunks@(Chunks as b) =
 pretty_ :: Pretty a => a -> Text
 pretty_ = prettyToStrictText
 
+data RecordEntry s a = RecordEntry
+    { keyPathInit :: [(Maybe s, Text, Maybe s)]
+    , lastKey     :: Text
+    , recordField :: RecordField s a
+    }
+
 {- This utility function converts
    `{ x = { y = { z = 1 } } }` to `{ x.y.z = 1 }`
 -}
 consolidateRecordLiteral
-    :: Map Text (RecordField s a) -> Map (NonEmpty Text) (RecordField s a)
-consolidateRecordLiteral = Map.fromList . fmap adapt . Map.toList
+    :: Map Text (RecordField Src a) -> [RecordEntry Src a]
+consolidateRecordLiteral = fmap adapt . pairToRecordEntry . Map.toList
   where
     adapt :: (Text, RecordField s a) -> (NonEmpty Text, RecordField s a)
     adapt (key, rf) =

@@ -221,6 +221,9 @@ stripTrailingNewline t =
         _ -> t'
   where t' = stripSpaces t
 
+stripAllWhitespace :: Text -> Text
+stripAllWhitespace = Text.dropAround isWhitespace
+
 -- Annotation helpers
 keyword, syntax, label, literal, builtin, operator :: Doc Ann -> Doc Ann
 keyword  = Pretty.annotate Keyword
@@ -487,7 +490,7 @@ prettyAnyLabels keys = Pretty.group (Pretty.flatAlt long short)
         , prettyAnyLabel key
         , case stripComment mSrc1 of
             Nothing -> mempty
-            Just _ -> Pretty.hardline <> renderSrc (stripTrailingNewline . stripNewline) mSrc1
+            Just _ -> Pretty.hardline <> renderSrc stripAllWhitespace mSrc1
         ]
     stripComment (Just src) | Text.all isWhitespace (srcText src) = Nothing
                             | otherwise = Just src

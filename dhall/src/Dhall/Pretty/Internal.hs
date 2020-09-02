@@ -1381,11 +1381,11 @@ prettyPrinters characterSet =
     prettyRecord :: Pretty a => Map Text (RecordField Src a) -> Doc Ann
     prettyRecord =
           braces
-        . map (prettyKeyValue prettyAnyLabel prettyExpression colon)
+        . map (prettyKeyValue prettyAnyLabels prettyExpression colon)
         . map adapt
         . Map.toList
       where
-        adapt (key, RecordField _mSrc0 val _mSrc1 mSrc2) = (key, mSrc2, val) -- TODO
+        adapt (key, RecordField mSrc0 val mSrc1 mSrc2) = ([(mSrc0, key, mSrc1)], mSrc2, val)
 
     prettyRecordLit :: Pretty a => Map Text (RecordField Src a) -> Doc Ann
     prettyRecordLit = prettyRecordLike braces

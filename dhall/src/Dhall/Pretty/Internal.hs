@@ -1405,8 +1405,9 @@ prettyPrinters characterSet =
             case keys of
                 []
                     | Var (V key' 0) <- Dhall.Syntax.shallowDenote val
-                    , key == key' ->
-                        duplicate (prettyAnyLabel key) -- TODO: include mSrc0 and mSrc1
+                    , key == key'
+                    , all (Text.all isWhitespace . srcText) mSrc2 ->
+                        duplicate (prettyAnyLabels [(mSrc0, key, mSrc1)])
                 _ ->
                     prettyKeyValue prettyAnyLabels prettyExpression equals (keys ++ [(mSrc0, key, mSrc1)], mSrc2, val)
 

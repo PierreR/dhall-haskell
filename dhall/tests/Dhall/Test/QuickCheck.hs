@@ -279,16 +279,7 @@ instance (Arbitrary s, Arbitrary a) => Arbitrary (PreferAnnotation s a) where
             ]
 
 instance (Arbitrary s, Arbitrary a) => Arbitrary (RecordField s a) where
-    arbitrary = do
-        recordFieldSrc0 <- arbitrary
-
-        recordFieldValue <- arbitrary
-
-        recordFieldSrc1 <- arbitrary
-
-        recordFieldSrc2 <- arbitrary
-
-        return RecordField{..}
+    arbitrary = lift4 RecordField
 
     shrink = genericShrink
 

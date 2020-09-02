@@ -1578,9 +1578,9 @@ pretty_ :: Pretty a => a -> Text
 pretty_ = prettyToStrictText
 
 data RecordEntry s a = RecordEntry
-    { keyPathInit :: [(Maybe s, Text, Maybe s)]
-    , lastKey     :: Text
-    , recordField :: RecordField s a
+    { _keyPathInit :: [(Maybe s, Text, Maybe s)]
+    , _lastKey     :: Text
+    , _recordField :: RecordField s a
     }
 
 {- This utility function converts

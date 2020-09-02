@@ -487,7 +487,7 @@ prettyAnyLabels keys = Pretty.group (Pretty.flatAlt long short)
         , prettyAnyLabel key
         , case stripComment mSrc1 of
             Nothing -> mempty
-            Just _ -> " " <> renderSrc stripSpaces mSrc1
+            Just _ -> Pretty.hardline <> renderSrc stripNewline mSrc1
         ]
     stripComment (Just src) | Text.all isWhitespace (srcText src) = Nothing
                             | otherwise = Just src

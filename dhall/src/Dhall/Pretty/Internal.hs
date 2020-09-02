@@ -1302,8 +1302,7 @@ prettyPrinters characterSet =
         stripComment Nothing = Nothing
 
         completion _T r =
-                " "
-            <>  prettySelectorExpression _T
+                prettySelectorExpression _T
             <>  doubleColon
             <>  case shallowDenote r of
                     RecordLit kvs ->
@@ -1323,60 +1322,65 @@ prettyPrinters characterSet =
         long =  prettyKey key
             <>  " "
             <>  separator
-            <>  case shallowDenote val of
-                    Some val' ->
-                            case stripComment mSrc of
-                                Nothing -> " "
-                                Just _ -> Pretty.hardline <> renderSrc (stripNewline . stripTrailingNewline) mSrc <> Pretty.hardline
-                        <>  builtin "Some"
-                        <>  case shallowDenote val' of
-                                RecordCompletion _T r ->
-                                    completion _T r
-
-                                RecordLit _ ->
-                                        Pretty.hardline
-                                    <>  "  "
-                                    <>  prettyImportExpression_ val'
-
-                                ListLit _ xs
-                                    | not (null xs) ->
-                                            Pretty.hardline
-                                        <>  "  "
-                                        <>  prettyImportExpression_ val'
-
-                                _ ->    Pretty.hardline
-                                    <>  "    "
-                                    <>  prettyImportExpression_ val'
-
-                    ToMap val' Nothing ->
-                            " " <> keyword "toMap"
-                        <>  case shallowDenote val' of
-                                RecordCompletion _T r ->
-                                    completion _T r
-                                _ ->    Pretty.hardline
-                                    <>  "    "
-                                    <>  prettyImportExpression_ val'
-
-                    RecordCompletion _T r ->
-                        completion _T r
-
-                    RecordLit _ ->
+            <>  case stripComment mSrc of
+                    Just _ ->
                             Pretty.hardline
-                        <>  "  "
-                        <>  prettyValue val
-
-                    ListLit _ xs
-                        | not (null xs) ->
-                                Pretty.hardline
-                            <>  "  "
-                            <>  prettyValue val
-
-                    _ ->    case stripComment mSrc of
-                                Nothing -> mempty
-                                Just _ -> Pretty.hardline <> "    " <> renderSrc (stripNewline . stripTrailingNewline) mSrc
+                        <>  "    "
+                        <>  renderSrc (stripNewline . stripTrailingNewline) mSrc
                         <>  Pretty.hardline
                         <>  "    "
                         <>  prettyValue val
+                    Nothing -> " " <>
+                        case shallowDenote val of
+                            Some val' ->
+                                    builtin "Some"
+                                <>  case shallowDenote val' of
+                                        RecordCompletion _T r ->
+                                                " "
+                                            <>  completion _T r
+
+                                        RecordLit _ ->
+                                                Pretty.hardline
+                                            <>  "  "
+                                            <>  prettyImportExpression_ val'
+
+                                        ListLit _ xs
+                                            | not (null xs) ->
+                                                    Pretty.hardline
+                                                <>  "  "
+                                                <>  prettyImportExpression_ val'
+
+                                        _ ->    Pretty.hardline
+                                            <>  "    "
+                                            <>  prettyImportExpression_ val'
+
+                            ToMap val' Nothing ->
+                                    keyword "toMap"
+                                <>  case shallowDenote val' of
+                                        RecordCompletion _T r ->
+                                            completion _T r
+                                        _ ->    Pretty.hardline
+                                            <>  "    "
+                                            <>  prettyImportExpression_ val'
+
+                            RecordCompletion _T r ->
+                                completion _T r
+
+                            RecordLit _ ->
+                                    Pretty.hardline
+                                <>  "  "
+                                <>  prettyValue val
+
+                            ListLit _ xs
+                                | not (null xs) ->
+                                        Pretty.hardline
+                                    <>  "  "
+                                    <>  prettyValue val
+
+                            _ ->
+                                    Pretty.hardline
+                                <>  "    "
+                                <>  prettyValue val
 
     prettyRecord :: Pretty a => Map Text (RecordField Src a) -> Doc Ann
     prettyRecord =

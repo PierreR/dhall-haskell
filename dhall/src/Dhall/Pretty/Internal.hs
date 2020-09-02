@@ -474,23 +474,24 @@ prettyAnyLabel :: Text -> Doc Ann
 prettyAnyLabel = prettyLabelShared True
 
 prettyAnyLabels :: Foldable list => list (Maybe Src, Text, Maybe Src) -> Doc Ann
-prettyAnyLabels =
-    mconcat . Pretty.punctuate dot . map (prettyAnyLabel . snd3) . toList
+prettyAnyLabels keys = Pretty.group (Pretty.flatAlt long short)
   where
-    snd3 (_, x, _) = x
+    short = (mconcat . Pretty.punctuate dot . map pretty' . toList) keys
 
-{-
-        keyWithComment = Pretty.align $ mconcat
-            [ case stripComment mSrc0 of
-                Nothing -> mempty
-                Just _ -> renderSrc stripTrailingNewline mSrc0 <> Pretty.hardline
-            , prettyKey key
-            , " "
-            , case stripComment mSrc1 of
-                Nothing -> mempty
-                Just _ -> renderSrc stripSpaces mSrc1
-            ]
--}
+    long = (Pretty.align . mconcat . Pretty.punctuate (Pretty.hardline <> dot <> Pretty.hardline) . map pretty' . toList) keys
+
+    pretty' (mSrc0, key, mSrc1) = Pretty.align $ mconcat
+        [ case stripComment mSrc0 of
+            Nothing -> mempty
+            Just _ -> renderSrc stripTrailingNewline mSrc0 <> Pretty.hardline
+        , prettyAnyLabel key
+        , case stripComment mSrc1 of
+            Nothing -> mempty
+            Just _ -> " " <> renderSrc stripSpaces mSrc1
+        ]
+    stripComment (Just src) | Text.all isWhitespace (srcText src) = Nothing
+                            | otherwise = Just src
+    stripComment Nothing = Nothing
 
 
 prettyLabels :: Set Text -> Doc Ann

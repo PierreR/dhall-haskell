@@ -475,7 +475,9 @@ prettyAnyLabel = prettyLabelShared True
 
 prettyAnyLabels :: Foldable list => list (Maybe Src, Text, Maybe Src) -> Doc Ann
 prettyAnyLabels =
-    mconcat . Pretty.punctuate dot . map prettyAnyLabel . toList
+    mconcat . Pretty.punctuate dot . map (prettyAnyLabel . snd3) . toList
+  where
+    snd3 (_, x, _) = x
 
 {-
         keyWithComment = Pretty.align $ mconcat
@@ -1406,8 +1408,6 @@ prettyPrinters characterSet =
                         duplicate (prettyAnyLabel key) -- TODO: include mSrc0 and mSrc1
                 _ ->
                     prettyKeyValue prettyAnyLabels prettyExpression equals (keys ++ [(mSrc0, key, mSrc1)], mSrc2, val)
-
-        snd3 (_, x, _) = x
 
     prettyAlternative (key, Just val) =
         prettyKeyValue prettyAnyLabel prettyExpression colon (key, Nothing, val)

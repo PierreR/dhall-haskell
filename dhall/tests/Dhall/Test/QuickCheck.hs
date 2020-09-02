@@ -189,8 +189,7 @@ whitespace = do
 
           singleline = do
               txt <- commentText `suchThat` (not . Text.isInfixOf "\n")
-              endOfLine <- Test.QuickCheck.elements ["\n", "\r\n"]
-              pure $ "--" <> txt <> endOfLine
+              pure $ "--" <> txt <> "\n"
 
           newlines = Text.concat <$> Test.QuickCheck.listOf (pure "\n")
 

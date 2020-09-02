@@ -486,7 +486,7 @@ prettyAnyLabels keys = Pretty.group (Pretty.flatAlt long short)
     pretty' (mSrc0, key, mSrc1) = Pretty.align $ mconcat
         [ case stripComment mSrc0 of
             Nothing -> mempty
-            Just _ -> renderSrc stripTrailingNewline mSrc0 <> Pretty.hardline
+            Just _ -> renderSrc stripAllWhitespace mSrc0 <> Pretty.hardline
         , prettyAnyLabel key
         , case stripComment mSrc1 of
             Nothing -> mempty

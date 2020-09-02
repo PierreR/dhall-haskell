@@ -473,9 +473,23 @@ prettyLabel = prettyLabelShared False
 prettyAnyLabel :: Text -> Doc Ann
 prettyAnyLabel = prettyLabelShared True
 
-prettyAnyLabels :: Foldable list => list Text -> Doc Ann
+prettyAnyLabels :: Foldable list => list (Maybe Src, Text, Maybe Src) -> Doc Ann
 prettyAnyLabels =
-    mconcat . Pretty.punctuate dot . fmap prettyAnyLabel . toList
+    mconcat . Pretty.punctuate dot . map prettyAnyLabel . toList
+
+{-
+        keyWithComment = Pretty.align $ mconcat
+            [ case stripComment mSrc0 of
+                Nothing -> mempty
+                Just _ -> renderSrc stripTrailingNewline mSrc0 <> Pretty.hardline
+            , prettyKey key
+            , " "
+            , case stripComment mSrc1 of
+                Nothing -> mempty
+                Just _ -> renderSrc stripSpaces mSrc1
+            ]
+-}
+
 
 prettyLabels :: Set Text -> Doc Ann
 prettyLabels a
@@ -734,7 +748,9 @@ prettyPrinters characterSet =
             <>  Pretty.align (keyword "with" <> " " <> update)
 
         (update, _) =
-            prettyKeyValue prettyAnyLabels prettyOperatorExpression equals (b, makeRecordField c)
+            prettyKeyValue prettyAnyLabels prettyOperatorExpression equals (adapt <$> b, Nothing, c)
+
+        adapt key = (Nothing, key, Nothing)
     prettyExpression (Assert a) =
         Pretty.group (Pretty.flatAlt long short)
       where
@@ -1273,25 +1289,14 @@ prettyPrinters characterSet =
         => (k -> Doc Ann)
         -> (Expr Src a -> Doc Ann)
         -> Doc Ann
-        -> (k, RecordField Src a)
+        -> (k, Maybe Src, Expr Src a)
         -> (Doc Ann, Doc Ann)
-    prettyKeyValue prettyKey prettyValue separator (key, RecordField mSrc0 val mSrc1 mSrc2) =
+    prettyKeyValue prettyKey prettyValue separator (key, mSrc, val) =
        duplicate (Pretty.group (Pretty.flatAlt long short))
       where
         stripComment (Just src) | Text.all isWhitespace (srcText src) = Nothing
                                 | otherwise = Just src
         stripComment Nothing = Nothing
-
-        keyWithComment = Pretty.align $ mconcat
-            [ case stripComment mSrc0 of
-                Nothing -> mempty
-                Just _ -> renderSrc stripTrailingNewline mSrc0 <> Pretty.hardline
-            , prettyKey key
-            , " "
-            , case stripComment mSrc1 of
-                Nothing -> mempty
-                Just _ -> renderSrc stripSpaces mSrc1
-            ]
 
         completion _T r =
                 " "
@@ -1303,21 +1308,23 @@ prettyPrinters characterSet =
                     _ ->
                         prettySelectorExpression r
 
-        short = keyWithComment
+        short = prettyKey key
+            <>  " "
             <>  separator
             <>  " "
-            <>  case stripComment mSrc2 of
+            <>  case stripComment mSrc of
                     Nothing -> mempty
-                    Just _  -> renderSrc stripTrailingNewline mSrc2 <> Pretty.hardline
+                    Just _  -> renderSrc stripTrailingNewline mSrc <> Pretty.hardline
             <>  prettyValue val
 
-        long = keyWithComment
+        long =  prettyKey key
+            <>  " "
             <>  separator
             <>  case shallowDenote val of
                     Some val' ->
-                            case stripComment mSrc2 of
+                            case stripComment mSrc of
                                 Nothing -> " "
-                                Just _ -> Pretty.hardline <> renderSrc (stripNewline . stripTrailingNewline) mSrc2 <> Pretty.hardline
+                                Just _ -> Pretty.hardline <> renderSrc (stripNewline . stripTrailingNewline) mSrc <> Pretty.hardline
                         <>  builtin "Some"
                         <>  case shallowDenote val' of
                                 RecordCompletion _T r ->
@@ -1361,9 +1368,9 @@ prettyPrinters characterSet =
                             <>  "  "
                             <>  prettyValue val
 
-                    _ ->    case stripComment mSrc2 of
+                    _ ->    case stripComment mSrc of
                                 Nothing -> mempty
-                                Just _ -> Pretty.hardline <> "    " <> renderSrc (stripNewline . stripTrailingNewline) mSrc2
+                                Just _ -> Pretty.hardline <> "    " <> renderSrc (stripNewline . stripTrailingNewline) mSrc
                         <>  Pretty.hardline
                         <>  "    "
                         <>  prettyValue val
@@ -1372,7 +1379,10 @@ prettyPrinters characterSet =
     prettyRecord =
           braces
         . map (prettyKeyValue prettyAnyLabel prettyExpression colon)
+        . map adapt
         . Map.toList
+      where
+        adapt (key, RecordField _mSrc0 val _mSrc1 mSrc2) = (key, mSrc2, val) -- TODO
 
     prettyRecordLit :: Pretty a => Map Text (RecordField Src a) -> Doc Ann
     prettyRecordLit = prettyRecordLike braces
@@ -1388,19 +1398,19 @@ prettyPrinters characterSet =
       where
         consolidated = consolidateRecordLiteral a
 
-        prettyRecordEntry (RecordEntry keys key recordField) =
+        prettyRecordEntry (RecordEntry keys key (RecordField mSrc0 val mSrc1 mSrc2)) =
             case keys of
                 []
-                    | Var (V key' 0) <- Dhall.Syntax.shallowDenote (recordFieldValue recordField)
+                    | Var (V key' 0) <- Dhall.Syntax.shallowDenote val
                     , key == key' ->
                         duplicate (prettyAnyLabel key) -- TODO: include mSrc0 and mSrc1
                 _ ->
-                    prettyKeyValue prettyAnyLabels prettyExpression equals (map snd3 keys ++ [key], recordField)
+                    prettyKeyValue prettyAnyLabels prettyExpression equals (keys ++ [(mSrc0, key, mSrc1)], mSrc2, val)
 
         snd3 (_, x, _) = x
 
     prettyAlternative (key, Just val) =
-        prettyKeyValue prettyAnyLabel prettyExpression colon (key, makeRecordField val)
+        prettyKeyValue prettyAnyLabel prettyExpression colon (key, Nothing, val)
     prettyAlternative (key, Nothing) =
         duplicate (prettyAnyLabel key)
 
